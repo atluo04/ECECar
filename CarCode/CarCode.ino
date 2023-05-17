@@ -13,6 +13,12 @@ const int right_pwm_pin = 39;
 uint16_t currentValues[8];
 uint16_t firstPreviousValues[8];
 uint16_t secondPreviousValues[8];
+double error = 0;
+double previousError = 0;
+
+//TIME
+unsigned int previousTime = 0;
+unsigned int currentTime = 0;
 
 //WEIGHTS
 const int W4 = 8;
@@ -23,11 +29,13 @@ const int W1 = 1;
 int minimum[8] = {689, 629, 643, 574, 597, 713, 597, 762};
 int maximum[8] = {1811,  1768.8,  1803,  1587,  1612,  1787,  1659,  1738};
 
-const float Kp;
-const float Kd;
+//PID CONSTANTS
+const float Kp = 1.0;
+const float Kd = 1.0;
 
-const int INITIALRIGHTSPEED = //FILL IN
-const int INITIALLEFTSPEED =  //FILL IN
+//BASESPEED
+const int BASERIGHTSPEED;//= FILL IN
+const int BASELEFTSPEED;   //= FILL IN
 
 void calibrate() {
   for (int i = 0; i < 8; i++) {
@@ -35,8 +43,8 @@ void calibrate() {
   }
 }
 
-int findError() {
-  int error = 0;
+double findError() {
+  double error;
   uint16_t normalizedValues[8];
   for (int i = 0; i < 8; i++) {
     uint16_t value1 = currentValues[i];
@@ -54,6 +62,29 @@ int findError() {
   return error;
 }
 
+void changeWheelSpeeds(int initialLeftSpd, int finalLeftSpd, int initialRightSpd, int finalRightSpd) {
+  int diffLeft = finalLeftSpd - initialLeftSpd;
+  int diffRight = finalRightSpd - initialRightSpd;
+  int stepIncrement = 20;
+  int numStepsLeft = abs(diffLeft) / stepIncrement;
+  int numStepsRight = abs(diffRight) / stepIncrement;
+  int numSteps = max(numStepsLeft, numStepsRight);
+  int pwmLeftVal = initialLeftSpd; // initialize left wheel speed
+  int pwmRightVal = initialRightSpd; // initialize right wheel speed
+  int deltaLeft = (diffLeft) / numSteps; // left in(de)crement
+  int deltaRight = (diffRight) / numSteps; // right in(de)crement
+  for (int k = 0; k < numSteps; k++) {
+    pwmLeftVal = pwmLeftVal + deltaLeft;
+    pwmRightVal = pwmRightVal + deltaRight;
+    analogWrite(left_pwm_pin, pwmLeftVal);
+    analogWrite(right_pwm_pin, pwmRightVal);
+    delay(30);
+  } 
+  analogWrite(left_pwm_pin, finalLeftSpd);
+  analogWrite(right_pwm_pin, finalRightSpd);
+} 
+
+
 void setup() {
   ECE3_Init();
   ECE3_read_IR(currentValues);
@@ -69,19 +100,26 @@ void setup() {
 
   digitalWrite(left_nslp_pin, HIGH);
   digitalWrite(right_nslp_pin, HIGH);
+
+  changeWheelSpeeds(0, BASELEFTSPEED, 0, BASERIGHTSPEED);
   Serial.begin(9600);
 }
 
 
 void loop() {
-  int error;
+  ECE3_read_IR(currentValues);
+  error = findError();
+
+  currentTime = millis();
+  double rateError = (error - previousError) / (currentTime - previousTime);
+
+  analogWrite(left_dir_pin, //FILL IN);
+  analogWrite(right_dir_pin, //FILL IN);
+
+  previousTime = currentTime;
   for (int i = 0; i < 8; i++) {
     secondPreviousValues[i] = firstPreviousValues[i];
     firstPreviousValues[i] = currentValues[i];
   }
-  ECE3_read_IR(currentValues);
-  error = findError();
-
-  analogWrite(left_dir_pin, //FILL IN);
-  analogWrite(right_dir_pin, //FILL IN);
+  previousError = error;
 }
