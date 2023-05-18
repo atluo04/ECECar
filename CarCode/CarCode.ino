@@ -1,4 +1,4 @@
-  #include <ECE3.h>
+ #include <ECE3.h>
 
 //PINS
 //const int calibratePin =
@@ -16,22 +16,17 @@ uint16_t secondPreviousValues[8];
 double error = 0;
 double previousError = 0;
 
-//TIME
-unsigned int previousTime = 0;
-unsigned int currentTime = 0;
-
 //WEIGHTS
-const int W4 = 8;
-const int W3 = 4;
-const int W2 = 2;
-const int W1 = 1;
-
-uint16_t minimum[8] = {689, 629, 643, 574, 597, 713, 597, 762};
-uint16_t maximum[8] = {1811,  1768.8,  1803,  1587,  1612,  1787,  1659,  1738};
+const double W4 = 2;
+const double W3 = 1.5;
+const double W2 = 1.25;
+const double W1 = 1;
+int minimum[8] = {689, 629, 643, 574, 597, 713, 597, 762};
+int maximum[8] = {1811,  1768.8,  1803,  1587,  1612,  1787,  1659,  1738};
 
 //PID CONSTANTS
-const float Kp = 0.001;
-const float Kd = 1.0;
+const float Kp = 0.03;
+const float Kd = 0.025;
 
 //BASESPEED
 const int BASERIGHTSPEED = 80; 
@@ -39,12 +34,12 @@ const int BASELEFTSPEED = 80;
 
 //TRACK IDENTIFIERS
 bool onStraight = true;
-
+/*
 void calibrate() {
   for (int i = 0; i < 8; i++) {
     ECE3_read_IR(minimum);
   }
-} 
+} */
 
 void setup() {
   ECE3_Init();
@@ -59,10 +54,14 @@ void setup() {
   pinMode(right_dir_pin, OUTPUT);
   pinMode(right_pwm_pin, OUTPUT);
 
+  digitalWrite(left_dir_pin,LOW);
+  digitalWrite(right_dir_pin,LOW);
+
   digitalWrite(left_nslp_pin, HIGH);
   digitalWrite(right_nslp_pin, HIGH);
 
-  changeWheelSpeeds(0, BASELEFTSPEED, 0, BASERIGHTSPEED);
+  changeWheelSpeeds(0,BASELEFTSPEED,0,BASERIGHTSPEED);
+
   Serial.begin(9600);
 }
 
@@ -72,17 +71,27 @@ void loop() {
   /*
   if(atCrossPiece()){
       //use encoders to turn car 180 deg
-  } */
+  } 
+    else {
+  */
   
   error = findError();
 
-  currentTime = millis();
-  double rateError = (error - previousError) / (currentTime - previousTime);
+  if(abs(error) > 3500){
+    error = previousError;
+  }
 
-  analogWrite(left_dir_pin, BASELEFTSPEED + error * Kp + rateError * Kd);
-  analogWrite(right_dir_pin, BASERIGHTSPEED + error * Kp + rateError * Kd);
+  double rateError = error - previousError;
+  
+  //Serial.print(error);
+  //Serial.println();
+  //Serial.print(rateError * Kd);
+  //Serial.println();
 
-  previousTime = currentTime;
+
+  analogWrite(left_pwm_pin, BASELEFTSPEED + error * Kp + rateError * Kd);
+  analogWrite(right_pwm_pin, BASERIGHTSPEED - error * Kp - rateError * Kd);
+
   for (int i = 0; i < 8; i++) {
     secondPreviousValues[i] = firstPreviousValues[i];
     firstPreviousValues[i] = currentValues[i];
@@ -92,14 +101,12 @@ void loop() {
 
 double findError() {
   double error;
-  uint16_t normalizedValues[8];
+  int normalizedValues[8];
   for (int i = 0; i < 8; i++) {
-    uint16_t value1 = currentValues[i];
-    uint16_t value2 = firstPreviousValues[i];
-    uint16_t value3 = secondPreviousValues[i];
+    int value1 = currentValues[i];
 
     //normalize to minimums
-    normalizedValues[i] = (value1 + value2 + value3) / 3 - minimum[i];
+    normalizedValues[i] = value1 - minimum[i];
 
     //normalize to maximums
     normalizedValues[i] = normalizedValues[i] * 1000 / maximum[i];
@@ -111,7 +118,7 @@ double findError() {
 
 bool atCrossPiece(){
   for(int i = 0; i < 8; i++){
-    if(currentValues[i] < 2000 && firstPreviousvalues[i] < 2000)
+    if(currentValues[i] < 1700 && firstPreviousValues[i] < 1700)
         return false;
   }
   return true;
