@@ -1,4 +1,4 @@
- #include <ECE3.h>
+#include <ECE3.h>
 
 //PINS
 //const int calibratePin =
@@ -28,18 +28,23 @@ int maximum[8] = {1811,  1768.8,  1803,  1587,  1612,  1787,  1659,  1738};
 const float Kp = 0.03;
 const float Kd = 0.025;
 
-//BASESPEED
-const int BASERIGHTSPEED = 80; 
+//SPEEDs
+const int BASERIGHTSPEED = 80;
 const int BASELEFTSPEED = 80;
+int leftSpeed = 0;
+int rightSpeed = 0;
+const int TURNINGSPEED = 150;
+int speedIncrease = 0;
 
 //TRACK IDENTIFIERS
 bool onStraight = true;
+bool passedCross = false;
 /*
-void calibrate() {
+  void calibrate() {
   for (int i = 0; i < 8; i++) {
     ECE3_read_IR(minimum);
   }
-} */
+  } */
 
 void setup() {
   ECE3_Init();
@@ -54,49 +59,50 @@ void setup() {
   pinMode(right_dir_pin, OUTPUT);
   pinMode(right_pwm_pin, OUTPUT);
 
-  digitalWrite(left_dir_pin,LOW);
-  digitalWrite(right_dir_pin,LOW);
+  digitalWrite(left_dir_pin, LOW);
+  digitalWrite(right_dir_pin, LOW);
 
   digitalWrite(left_nslp_pin, HIGH);
   digitalWrite(right_nslp_pin, HIGH);
 
-  changeWheelSpeeds(0,BASELEFTSPEED,0,BASERIGHTSPEED);
+  changeWheelSpeeds(0, BASELEFTSPEED, 0, BASERIGHTSPEED);
 
   Serial.begin(9600);
 }
 
 void loop() {
   ECE3_read_IR(currentValues);
-  
-  /*
-  if(atCrossPiece()){
-      //use encoders to turn car 180 deg
-  } 
-    else {
-  */
-  
-  error = findError();
+  if (atCrossPiece() && !passedCross) {
+    changeWheelSpeeds(leftSpeed,0, rightSpeed, 0);
+    resetEncoderCount_left();
+    resetEncoderCount_right();
 
-  if(abs(error) > 3500){
-    error = previousError;
+    digitalWrite(left_dir_pin, HIGH);
+    changeWheelSpeeds(0, TURNINGSPEED, 0, TURNINGSPEED);
+    bool turning = true;
+    while(turning){
+        if(getEncoderCount_left() > 7200){
+            turning = false;
+        }
+    }
+    digitalWrite(left_dir_pin, LOW);
+    passedCross = true;
   }
+  else {
+    error = findError();
+    double rateError = error - previousError;
 
-  double rateError = error - previousError;
-  
-  //Serial.print(error);
-  //Serial.println();
-  //Serial.print(rateError * Kd);
-  //Serial.println();
+    leftSpeed = BASELEFTSPEED + error * Kp + rateError * Kd + speedIncrease;
+    rightSpeed = BASERIGHTSPEED - error * Kp - rateError * Kd + speedIncrease;
+    analogWrite(left_pwm_pin, leftSpeed);
+    analogWrite(right_pwm_pin, rightSpeed);
 
-
-  analogWrite(left_pwm_pin, BASELEFTSPEED + error * Kp + rateError * Kd);
-  analogWrite(right_pwm_pin, BASERIGHTSPEED - error * Kp - rateError * Kd);
-
-  for (int i = 0; i < 8; i++) {
-    secondPreviousValues[i] = firstPreviousValues[i];
-    firstPreviousValues[i] = currentValues[i];
+    for (int i = 0; i < 8; i++) {
+      secondPreviousValues[i] = firstPreviousValues[i];
+      firstPreviousValues[i] = currentValues[i];
+    }
+    previousError = error;
   }
-  previousError = error;
 }
 
 double findError() {
@@ -116,10 +122,10 @@ double findError() {
   return error;
 }
 
-bool atCrossPiece(){
-  for(int i = 0; i < 8; i++){
-    if(currentValues[i] < 1700 && firstPreviousValues[i] < 1700)
-        return false;
+bool atCrossPiece() {
+  for (int i = 0; i < 8; i++) {
+    if (currentValues[i] < 1700 && firstPreviousValues[i] < 1700)
+      return false;
   }
   return true;
 }
@@ -141,7 +147,7 @@ void changeWheelSpeeds(int initialLeftSpd, int finalLeftSpd, int initialRightSpd
     analogWrite(left_pwm_pin, pwmLeftVal);
     analogWrite(right_pwm_pin, pwmRightVal);
     delay(30);
-  } 
+  }
   analogWrite(left_pwm_pin, finalLeftSpd);
   analogWrite(right_pwm_pin, finalRightSpd);
 }
