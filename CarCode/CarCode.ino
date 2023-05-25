@@ -17,10 +17,10 @@ double error = 0;
 double previousError = 0;
 
 //WEIGHTS
-double W4 = 2;      
-double W3 = 1.5;    
-double W2 = 1.25;   
-double W1 = 1;      
+double W4 = 2;
+double W3 = 1.5;
+double W2 = 1.25;
+double W1 = 1;
 int minimum[8] = {689, 629, 643, 574, 597, 713, 597, 762};
 int maximum[8] = {1811,  1768.8,  1803,  1587,  1612,  1787,  1659,  1738};
 
@@ -78,26 +78,26 @@ void loop() {
   ECE3_read_IR(currentValues);
   error = findError();
   if (atCrossPiece()) {
-    if(!passedCross){
-    changeWheelSpeeds(leftSpeed,0, rightSpeed, 0);
-    resetEncoderCount_left();
-    resetEncoderCount_right();
+    if (!passedCross) {
+      changeWheelSpeeds(leftSpeed, 0, rightSpeed, 0);
+      resetEncoderCount_left();
+      resetEncoderCount_right();
 
-    digitalWrite(left_dir_pin, HIGH);
-    changeWheelSpeeds(0, TURNINGSPEED, 0, TURNINGSPEED);
-    bool turning = true;
-    while(turning){
-        if(getEncoderCount_left() > 220){    //for speed 50 -> 350,speed 150 -> 220
-            turning = false;
+      digitalWrite(left_dir_pin, HIGH);
+      changeWheelSpeeds(0, TURNINGSPEED, 0, TURNINGSPEED);
+      bool turning = true;
+      while (turning) {
+        if (getEncoderCount_left() > 220) {  //for speed 50 -> 350,speed 150 -> 220
+          turning = false;
         }
-    }
-    changeWheelSpeeds(TURNINGSPEED, 0, TURNINGSPEED,0);
-    digitalWrite(left_dir_pin, LOW);
-    BASESPEED = 70;
-    changeWheelSpeeds(0, BASESPEED, 0, BASESPEED);
-    passedCross = true;
-    boosted = false;
-    slowed = false;
+      }
+      changeWheelSpeeds(TURNINGSPEED, 0, TURNINGSPEED, 0);
+      digitalWrite(left_dir_pin, LOW);
+      BASESPEED = 70;
+      changeWheelSpeeds(0, BASESPEED, 0, BASESPEED);
+      passedCross = true;
+      boosted = false;
+      slowed = false;
     }
     else {
       changeWheelSpeeds(leftSpeed, 0, rightSpeed, 0);
@@ -107,30 +107,32 @@ void loop() {
   else {
     double rateError = error - previousError;
     int leftEncoder = getEncoderCount_left();
-    
+
     leftSpeed = BASESPEED + error * Kp + rateError * Kd;
     rightSpeed = BASESPEED - error * Kp - rateError * Kd;
-  
-    if(!boosted && leftEncoder > STRAIGHTSTART){
-      BASESPEED = 200;
-      changeWheelSpeeds(leftSpeed, BASESPEED, rightSpeed, BASESPEED);
-      boosted = true;
-    }
-    
-    if(!passedCross && !slowed && leftEncoder > TRACKBREAK){
+
+    if (!passedCross) {
+      if (!boosted && leftEncoder > STRAIGHTSTART) {
+        BASESPEED = 200;
+        changeWheelSpeeds(leftSpeed, BASESPEED, rightSpeed, BASESPEED);
+        boosted = true;
+      }
+      else if (!slowed && leftEncoder > TRACKBREAK) {
         BASESPEED = 40;
         changeWheelSpeeds(leftSpeed, BASESPEED, rightSpeed, BASESPEED);
         slowed = true;
-    }
-
-    if(passedCross){
-      if(!boosted && leftEncoder > STRAIGHTSTART){
-          BASESPEED = 200;
-          changeWheelSpeeds(leftSpeed, BASESPEED, rightSpeed, BASESPEED);
       }
-      if(!slowed && leftEncoder > TURNSTART){
+    }
+    else {
+      if (!boosted && leftEncoder > STRAIGHTSTART) {
+        BASESPEED = 200;
+        changeWheelSpeeds(leftSpeed, BASESPEED, rightSpeed, BASESPEED);
+        boosted = true;
+      }
+      else if (!slowed && leftEncoder > TURNSTART) {
         BASESPEED = 70;
         changeWheelSpeeds(leftSpeed, BASESPEED, rightSpeed, BASESPEED);
+        slowed = true;
       }
     }
 
