@@ -17,28 +17,32 @@ double error = 0;
 double previousError = 0;
 
 //WEIGHTS
-const double W4 = 2;
-const double W3 = 1.5;
-const double W2 = 1.25;
-const double W1 = 1;
+double W4 = 2;      
+double W3 = 1.5;    
+double W2 = 1.25;   
+double W1 = 1;      
 int minimum[8] = {689, 629, 643, 574, 597, 713, 597, 762};
 int maximum[8] = {1811,  1768.8,  1803,  1587,  1612,  1787,  1659,  1738};
 
 //PID CONSTANTS
 const float Kp = 0.03;
-const float Kd = 0.025;
+const float Kd = 0.05;
 
 //SPEEDs
-const int BASERIGHTSPEED = 80;
-const int BASELEFTSPEED = 80;
-int leftSpeed = 0;
-int rightSpeed = 0;
+int BASESPEED = 70;
+int leftSpeed = BASESPEED;
+int rightSpeed = BASESPEED;
 const int TURNINGSPEED = 150;
-int speedIncrease = 0;
 
 //TRACK IDENTIFIERS
-bool onStraight = true;
 bool passedCross = false;
+const int CROSSPIECETHRESHOLD = 1700;
+const int TRACKBREAK = 3400;
+int STRAIGHTSTART = 800;
+bool boosted = false;
+bool slowed = false;
+const int TURNSTART = 2500;
+
 /*
   void calibrate() {
   for (int i = 0; i < 8; i++) {
@@ -48,9 +52,9 @@ bool passedCross = false;
 
 void setup() {
   ECE3_Init();
-  ECE3_read_IR(currentValues);
-  ECE3_read_IR(firstPreviousValues);
   ECE3_read_IR(secondPreviousValues);
+  ECE3_read_IR(firstPreviousValues);
+  ECE3_read_IR(currentValues);
 
   pinMode(left_nslp_pin, OUTPUT);
   pinMode(left_dir_pin, OUTPUT);
@@ -65,14 +69,16 @@ void setup() {
   digitalWrite(left_nslp_pin, HIGH);
   digitalWrite(right_nslp_pin, HIGH);
 
-  changeWheelSpeeds(0, BASELEFTSPEED, 0, BASERIGHTSPEED);
+  changeWheelSpeeds(0, BASESPEED, 0, BASESPEED);
 
   Serial.begin(9600);
 }
 
 void loop() {
   ECE3_read_IR(currentValues);
-  if (atCrossPiece() && !passedCross) {
+  error = findError();
+  if (atCrossPiece()) {
+    if(!passedCross){
     changeWheelSpeeds(leftSpeed,0, rightSpeed, 0);
     resetEncoderCount_left();
     resetEncoderCount_right();
@@ -81,19 +87,53 @@ void loop() {
     changeWheelSpeeds(0, TURNINGSPEED, 0, TURNINGSPEED);
     bool turning = true;
     while(turning){
-        if(getEncoderCount_left() > 7200){
+        if(getEncoderCount_left() > 220){    //for speed 50 -> 350,speed 150 -> 220
             turning = false;
         }
     }
+    changeWheelSpeeds(TURNINGSPEED, 0, TURNINGSPEED,0);
     digitalWrite(left_dir_pin, LOW);
+    BASESPEED = 70;
+    changeWheelSpeeds(0, BASESPEED, 0, BASESPEED);
     passedCross = true;
+    boosted = false;
+    slowed = false;
+    }
+    else {
+      changeWheelSpeeds(leftSpeed, 0, rightSpeed, 0);
+      exit(0);
+    }
   }
   else {
-    error = findError();
     double rateError = error - previousError;
+    int leftEncoder = getEncoderCount_left();
+    
+    leftSpeed = BASESPEED + error * Kp + rateError * Kd;
+    rightSpeed = BASESPEED - error * Kp - rateError * Kd;
+  
+    if(!boosted && leftEncoder > STRAIGHTSTART){
+      BASESPEED = 200;
+      changeWheelSpeeds(leftSpeed, BASESPEED, rightSpeed, BASESPEED);
+      boosted = true;
+    }
+    
+    if(!passedCross && !slowed && leftEncoder > TRACKBREAK){
+        BASESPEED = 40;
+        changeWheelSpeeds(leftSpeed, BASESPEED, rightSpeed, BASESPEED);
+        slowed = true;
+    }
 
-    leftSpeed = BASELEFTSPEED + error * Kp + rateError * Kd + speedIncrease;
-    rightSpeed = BASERIGHTSPEED - error * Kp - rateError * Kd + speedIncrease;
+    if(passedCross){
+      if(!boosted && leftEncoder > STRAIGHTSTART){
+          BASESPEED = 200;
+          changeWheelSpeeds(leftSpeed, BASESPEED, rightSpeed, BASESPEED);
+      }
+      if(!slowed && leftEncoder > TURNSTART){
+        BASESPEED = 70;
+        changeWheelSpeeds(leftSpeed, BASESPEED, rightSpeed, BASESPEED);
+      }
+    }
+
     analogWrite(left_pwm_pin, leftSpeed);
     analogWrite(right_pwm_pin, rightSpeed);
 
@@ -124,7 +164,7 @@ double findError() {
 
 bool atCrossPiece() {
   for (int i = 0; i < 8; i++) {
-    if (currentValues[i] < 1700 && firstPreviousValues[i] < 1700)
+    if (currentValues[i] < CROSSPIECETHRESHOLD && firstPreviousValues[i] < CROSSPIECETHRESHOLD)
       return false;
   }
   return true;
