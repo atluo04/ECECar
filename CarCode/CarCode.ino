@@ -25,8 +25,18 @@ int minimum[8] = {689, 629, 643, 574, 597, 713, 597, 762};
 int maximum[8] = {1811,  1768.8,  1803,  1587,  1612,  1787,  1659,  1738};
 
 //PID CONSTANTS
-const float Kp = 0.03;
-const float Kd = 0.05;
+float Kp = 0.03;
+float Kd = 0.05;
+
+const float Kp40 = 0.03;
+const float Kd40 = 0.01;
+
+const float Kp70 = 0.03;
+const float Kd70 = 0.05;
+
+const float Kp200 = 0.03;   //need to find values
+const float Kp200 = 0.05;   
+
 
 //SPEEDs
 int BASESPEED = 70;
@@ -35,13 +45,14 @@ int rightSpeed = BASESPEED;
 const int TURNINGSPEED = 150;
 
 //TRACK IDENTIFIERS
-bool passedCross = false;
 const int CROSSPIECETHRESHOLD = 1700;
 const int TRACKBREAK = 3400;
+const int TRACKBREAKEND = 3700;
 int STRAIGHTSTART = 800;
+const int TURNSTART = 3000;
 bool boosted = false;
 bool slowed = false;
-const int TURNSTART = 2500;
+bool passedCross = false;
 
 /*
   void calibrate() {
@@ -94,10 +105,12 @@ void loop() {
       changeWheelSpeeds(TURNINGSPEED, 0, TURNINGSPEED, 0);
       digitalWrite(left_dir_pin, LOW);
       BASESPEED = 70;
+      resetEncoderCount_left();
       changeWheelSpeeds(0, BASESPEED, 0, BASESPEED);
       passedCross = true;
       boosted = false;
       slowed = false;
+      STRAIGHTSTART = 800;
     }
     else {
       changeWheelSpeeds(leftSpeed, 0, rightSpeed, 0);
@@ -111,26 +124,41 @@ void loop() {
     leftSpeed = BASESPEED + error * Kp + rateError * Kd;
     rightSpeed = BASESPEED - error * Kp - rateError * Kd;
 
+    //for speeding up car
     if (!passedCross) {
       if (!boosted && leftEncoder > STRAIGHTSTART) {
         BASESPEED = 200;
+        Kp = Kp200;
+        Kd = Kd200;
         changeWheelSpeeds(leftSpeed, BASESPEED, rightSpeed, BASESPEED);
         boosted = true;
       }
       else if (!slowed && leftEncoder > TRACKBREAK) {
         BASESPEED = 40;
+        Kp = Kp40;
+        Kd = Kd40;
         changeWheelSpeeds(leftSpeed, BASESPEED, rightSpeed, BASESPEED);
         slowed = true;
+      }
+      else if(slowed && leftEncoder > TRACKBREAKEND){
+        BASESPEED = 70;
+        Kp = Kp70;
+        Kd = Kd70;
+        changeWheelSpeeds(leftSpeed, BASESPEED, rightSpeed, BASESPEED);
       }
     }
     else {
       if (!boosted && leftEncoder > STRAIGHTSTART) {
         BASESPEED = 200;
+        Kp = Kp200;
+        Kd = Kd200;
         changeWheelSpeeds(leftSpeed, BASESPEED, rightSpeed, BASESPEED);
         boosted = true;
       }
       else if (!slowed && leftEncoder > TURNSTART) {
         BASESPEED = 70;
+        Kp = Kp70;
+        Kd = Kd70;
         changeWheelSpeeds(leftSpeed, BASESPEED, rightSpeed, BASESPEED);
         slowed = true;
       }
