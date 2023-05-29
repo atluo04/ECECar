@@ -17,12 +17,12 @@ double error = 0;
 double previousError = 0;
 
 //WEIGHTS
-double W4 = 2;
-double W3 = 1.5;
-double W2 = 1.25;
+double W4 = 4;
+double W3 = 3;
+double W2 = 2;
 double W1 = 1;
-int minimum[8] = {689, 629, 643, 574, 597, 713, 597, 762};
-int maximum[8] = {1811,  1768.8,  1803,  1587,  1612,  1787,  1659,  1738};
+int minimum[8] = {898, 780, 803, 687, 710, 827, 687, 898};
+int maximum[8] = {2500,2500,2500,2500,2500,2500,2500,2500};
 
 //PID CONSTANTS
 float Kp = 0.03;
@@ -34,8 +34,8 @@ const float Kd40 = 0.01;
 const float Kp70 = 0.03;
 const float Kd70 = 0.05;
 
-const float Kp200 = 0.03;   //need to find values
-const float Kp200 = 0.05;   
+const float Kp200 = 0.008;   //need to find values
+const float Kd200 = 0.04;   
 
 
 //SPEEDs
@@ -46,12 +46,13 @@ const int TURNINGSPEED = 150;
 
 //TRACK IDENTIFIERS
 const int CROSSPIECETHRESHOLD = 1700;
-const int TRACKBREAK = 3400;
-const int TRACKBREAKEND = 3700;
-int STRAIGHTSTART = 800;
-const int TURNSTART = 3000;
+const int TRACKBREAK = 3150;
+const int TRACKBREAKEND = 3600;
+int STRAIGHTSTART = 2000;
+const int TURNSTART = 2800;
 bool boosted = false;
 bool slowed = false;
+bool returnToBase = false;
 bool passedCross = false;
 
 /*
@@ -87,7 +88,6 @@ void setup() {
 
 void loop() {
   ECE3_read_IR(currentValues);
-  error = findError();
   if (atCrossPiece()) {
     if (!passedCross) {
       changeWheelSpeeds(leftSpeed, 0, rightSpeed, 0);
@@ -96,7 +96,7 @@ void loop() {
 
       digitalWrite(left_dir_pin, HIGH);
       changeWheelSpeeds(0, TURNINGSPEED, 0, TURNINGSPEED);
-      bool turning = true;
+      bool turning = true;       
       while (turning) {
         if (getEncoderCount_left() > 220) {  //for speed 50 -> 350,speed 150 -> 220
           turning = false;
@@ -110,7 +110,7 @@ void loop() {
       passedCross = true;
       boosted = false;
       slowed = false;
-      STRAIGHTSTART = 800;
+      STRAIGHTSTART = 1500;
     }
     else {
       changeWheelSpeeds(leftSpeed, 0, rightSpeed, 0);
@@ -118,41 +118,61 @@ void loop() {
     }
   }
   else {
-    double rateError = error - previousError;
     int leftEncoder = getEncoderCount_left();
 
+     error = findError();
+    double rateError = error - previousError;
     leftSpeed = BASESPEED + error * Kp + rateError * Kd;
     rightSpeed = BASESPEED - error * Kp - rateError * Kd;
+    analogWrite(left_pwm_pin, leftSpeed);
+    analogWrite(right_pwm_pin, rightSpeed);
 
     //for speeding up car
     if (!passedCross) {
       if (!boosted && leftEncoder > STRAIGHTSTART) {
-        BASESPEED = 200;
+        BASESPEED = 150;
         Kp = Kp200;
         Kd = Kd200;
         changeWheelSpeeds(leftSpeed, BASESPEED, rightSpeed, BASESPEED);
+        leftSpeed = BASESPEED;
+        rightSpeed = BASESPEED;
         boosted = true;
       }
       else if (!slowed && leftEncoder > TRACKBREAK) {
         BASESPEED = 40;
         Kp = Kp40;
         Kd = Kd40;
+        W4 = 2;
+        W3 = 1.5;
+        W2 = 1.25;
+        W1 = 1;
         changeWheelSpeeds(leftSpeed, BASESPEED, rightSpeed, BASESPEED);
+        leftSpeed = BASESPEED;
+        rightSpeed = BASESPEED;
         slowed = true;
       }
-      else if(slowed && leftEncoder > TRACKBREAKEND){
+      else if(slowed && !returnToBase && leftEncoder > TRACKBREAKEND){
         BASESPEED = 70;
+        W4 = 2;
+        W3 = 1.5;
+        W2 = 1.25;
+        W1 = 1;
         Kp = Kp70;
         Kd = Kd70;
         changeWheelSpeeds(leftSpeed, BASESPEED, rightSpeed, BASESPEED);
+        leftSpeed = BASESPEED;
+        rightSpeed = BASESPEED;
+        returnToBase = true;
       }
     }
-    else {
+    else if(passedCross){
       if (!boosted && leftEncoder > STRAIGHTSTART) {
-        BASESPEED = 200;
+        BASESPEED = 150;
         Kp = Kp200;
         Kd = Kd200;
         changeWheelSpeeds(leftSpeed, BASESPEED, rightSpeed, BASESPEED);
+        leftSpeed = BASESPEED;
+        rightSpeed = BASESPEED;
         boosted = true;
       }
       else if (!slowed && leftEncoder > TURNSTART) {
@@ -160,12 +180,11 @@ void loop() {
         Kp = Kp70;
         Kd = Kd70;
         changeWheelSpeeds(leftSpeed, BASESPEED, rightSpeed, BASESPEED);
+        leftSpeed = BASESPEED;
+        rightSpeed = BASESPEED;
         slowed = true;
       }
     }
-
-    analogWrite(left_pwm_pin, leftSpeed);
-    analogWrite(right_pwm_pin, rightSpeed);
 
     for (int i = 0; i < 8; i++) {
       secondPreviousValues[i] = firstPreviousValues[i];
