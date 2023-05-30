@@ -17,37 +17,37 @@ double error = 0;
 double previousError = 0;
 
 //WEIGHTS
-double W4 = 4;
-double W3 = 3;
-double W2 = 2;
+double W4 = 2;
+double W3 = 1.5;
+double W2 = 1.25;
 double W1 = 1;
-int minimum[8] = {898, 780, 803, 687, 710, 827, 687, 898};
+int minimum[8] = {740, 692, 716,575,528,528,366,482};
 int maximum[8] = {2500,2500,2500,2500,2500,2500,2500,2500};
 
 //PID CONSTANTS
-float Kp = 0.03;
-float Kd = 0.05;
+float Kp = 0.068;
+float Kd = 0.4;
 
-const float Kp40 = 0.03;
-const float Kd40 = 0.01;
+const float Kp40 = 0.01;
+const float Kd40 = 0.04;
 
-const float Kp70 = 0.03;
-const float Kd70 = 0.05;
+const float Kp70 = 0.04;
+const float Kd70 = 0.06;
 
 const float Kp200 = 0.008;   //need to find values
-const float Kd200 = 0.04;   
+const float Kd200 = 0.08;   
 
 
 //SPEEDs
-int BASESPEED = 70;
+int BASESPEED = 100;
 int leftSpeed = BASESPEED;
 int rightSpeed = BASESPEED;
 const int TURNINGSPEED = 150;
 
 //TRACK IDENTIFIERS
-const int CROSSPIECETHRESHOLD = 1700;
-const int TRACKBREAK = 3150;
-const int TRACKBREAKEND = 3600;
+const int CROSSPIECETHRESHOLD = 1600;
+const int TRACKBREAK = 3350;
+const int TRACKBREAKEND = 3750;
 int STRAIGHTSTART = 2000;
 const int TURNSTART = 2800;
 bool boosted = false;
@@ -81,9 +81,9 @@ void setup() {
   digitalWrite(left_nslp_pin, HIGH);
   digitalWrite(right_nslp_pin, HIGH);
 
-  changeWheelSpeeds(0, BASESPEED, 0, BASESPEED);
-
   Serial.begin(9600);
+  delay(2000);
+   changeWheelSpeeds(0, BASESPEED, 0, BASESPEED);
 }
 
 void loop() {
@@ -120,12 +120,17 @@ void loop() {
   else {
     int leftEncoder = getEncoderCount_left();
 
-     error = findError();
+    error = findError();
     double rateError = error - previousError;
     leftSpeed = BASESPEED + error * Kp + rateError * Kd;
     rightSpeed = BASESPEED - error * Kp - rateError * Kd;
     analogWrite(left_pwm_pin, leftSpeed);
     analogWrite(right_pwm_pin, rightSpeed);
+
+    if(slowed){
+      Serial.print(error);
+      Serial.println();
+    }
 
     //for speeding up car
     if (!passedCross) {
@@ -134,25 +139,21 @@ void loop() {
         Kp = Kp200;
         Kd = Kd200;
         changeWheelSpeeds(leftSpeed, BASESPEED, rightSpeed, BASESPEED);
-        leftSpeed = BASESPEED;
-        rightSpeed = BASESPEED;
         boosted = true;
       }
       else if (!slowed && leftEncoder > TRACKBREAK) {
-        BASESPEED = 40;
+        BASESPEED = 25;
         Kp = Kp40;
         Kd = Kd40;
-        W4 = 2;
+        W4 = 0;
         W3 = 1.5;
         W2 = 1.25;
         W1 = 1;
         changeWheelSpeeds(leftSpeed, BASESPEED, rightSpeed, BASESPEED);
-        leftSpeed = BASESPEED;
-        rightSpeed = BASESPEED;
         slowed = true;
       }
       else if(slowed && !returnToBase && leftEncoder > TRACKBREAKEND){
-        BASESPEED = 70;
+        BASESPEED = 80;
         W4 = 2;
         W3 = 1.5;
         W2 = 1.25;
@@ -160,10 +161,10 @@ void loop() {
         Kp = Kp70;
         Kd = Kd70;
         changeWheelSpeeds(leftSpeed, BASESPEED, rightSpeed, BASESPEED);
-        leftSpeed = BASESPEED;
-        rightSpeed = BASESPEED;
         returnToBase = true;
       }
+      leftSpeed = BASESPEED;
+      rightSpeed = BASESPEED;
     }
     else if(passedCross){
       if (!boosted && leftEncoder > STRAIGHTSTART) {
