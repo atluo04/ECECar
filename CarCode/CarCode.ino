@@ -41,14 +41,14 @@ const float Kd200 = 0.373;
 int BASESPEED = 100;
 int leftSpeed = BASESPEED;
 int rightSpeed = BASESPEED;
-const int TURNINGSPEED = 200;
+const int TURNINGSPEED = 180;
 
 //TRACK IDENTIFIERS
 const int CROSSPIECETHRESHOLD = 1600;
-const int TRACKBREAK = 3250;
-const int TRACKBREAKEND = 3750;
-int STRAIGHTSTART = 2100;
-const int TURNSTART = 2600;
+const int TRACKBREAK = 3275;
+const int TRACKBREAKEND = 3650;
+int STRAIGHTSTART = 1850;
+const int TURNSTART = 2400;
 bool boosted = false;
 bool slowed = false;
 bool returnToBase = false;
@@ -90,14 +90,14 @@ void loop() {
   ECE3_read_IR(currentValues);
   if (atCrossPiece()) {
     if (!passedCross) {
-      BASESPEED = 150;
       turnAround();
       Kp = Kp200;
       Kd = Kd200;
+      BASESPEED = 150;
       passedCross = true;
       boosted = false;
       slowed = false;
-      STRAIGHTSTART = 1500;
+      STRAIGHTSTART = 1700;
     }
     else {
       changeWheelSpeeds(leftSpeed, 0, rightSpeed, 0);
@@ -133,7 +133,7 @@ void loop() {
     //for speeding up car
     if (!passedCross) {
       if (!boosted && leftEncoder > STRAIGHTSTART) {
-        BASESPEED = 150;
+        BASESPEED = 170;
         Kp = Kp200;
         Kd = Kd200;
         changeWheelSpeeds(leftSpeed, BASESPEED, rightSpeed, BASESPEED);
@@ -156,7 +156,7 @@ void loop() {
     }
     else if(passedCross){
       if (!boosted && leftEncoder > STRAIGHTSTART) {
-        BASESPEED = 210;
+        BASESPEED = 170;
         Kp = Kp200;
         Kd = Kd200;
         changeWheelSpeeds(leftSpeed, BASESPEED, rightSpeed, BASESPEED);
@@ -204,18 +204,18 @@ bool atCrossPiece() {
 }
 
 void turnAround(){
+      changeWheelSpeeds(BASESPEED, 0, BASESPEED, 0);
       resetEncoderCount_left();
       resetEncoderCount_right();
-
       digitalWrite(left_dir_pin, HIGH);
-      changeWheelSpeeds(leftSpeed, TURNINGSPEED, rightSpeed, TURNINGSPEED);
+      changeWheelSpeeds(0, TURNINGSPEED, 0, TURNINGSPEED);
       bool turning = true;       
       while (turning) {
-        if (getEncoderCount_left() > 205) {  //for speed 50 -> 350,speed 150 -> 220
+        if (getEncoderCount_left() > 160 && getEncoderCount_right() > 160) {  //for speed 50 -> 350,speed 150 -> 220
           turning = false;
         }
       }
-      //changeWheelSpeeds(TURNINGSPEED, 0, TURNINGSPEED, 0);
+      changeWheelSpeeds(TURNINGSPEED, 0, TURNINGSPEED, 0);
       digitalWrite(left_dir_pin, LOW);
       resetEncoderCount_left();
       changeWheelSpeeds(TURNINGSPEED, BASESPEED, TURNINGSPEED, BASESPEED);
