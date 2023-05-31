@@ -24,17 +24,17 @@ int minimum[8] = {574, 644, 692, 527, 504, 620, 527, 644};
 int maximum[8] = {2500,2500,2500,2500,2500,2500,2500,2500};
 
 //PID CONSTANTS
-float Kp = 0.065;
+float Kp = 0.067;
 float Kd = 0.36;
 
-const float Kp40 = 0.01;
-const float Kd40 = 0.04;
+const float Kp40 = 0.04;
+const float Kd40 = 0.35;
 
-const float Kp70 = 0.04;
-const float Kd70 = 0.06;
+const float Kp100 = 0.065;
+const float Kd100 = 0.36;
 
-const float Kp200 = 0.008;   //need to find values
-const float Kd200 = 0.08;   
+const float Kp200 = 0.03;   //need to find values
+const float Kd200 = 0.373;   
 
 
 //SPEEDs
@@ -45,10 +45,10 @@ const int TURNINGSPEED = 200;
 
 //TRACK IDENTIFIERS
 const int CROSSPIECETHRESHOLD = 1600;
-const int TRACKBREAK = 3350;
+const int TRACKBREAK = 3250;
 const int TRACKBREAKEND = 3750;
-int STRAIGHTSTART = 2000;
-const int TURNSTART = 2800;
+int STRAIGHTSTART = 2100;
+const int TURNSTART = 2600;
 bool boosted = false;
 bool slowed = false;
 bool returnToBase = false;
@@ -90,7 +90,10 @@ void loop() {
   ECE3_read_IR(currentValues);
   if (atCrossPiece()) {
     if (!passedCross) {
+      BASESPEED = 150;
       turnAround();
+      Kp = Kp200;
+      Kd = Kd200;
       passedCross = true;
       boosted = false;
       slowed = false;
@@ -137,31 +140,23 @@ void loop() {
         boosted = true;
       }
       else if (!slowed && leftEncoder > TRACKBREAK) {
-        BASESPEED = 25;
+        BASESPEED = 30;
         Kp = Kp40;
         Kd = Kd40;
-        W4 = 0;
-        W3 = 1.5;
-        W2 = 1.25;
-        W1 = 1;
         changeWheelSpeeds(leftSpeed, BASESPEED, rightSpeed, BASESPEED);
         slowed = true;
       }
       else if(slowed && !returnToBase && leftEncoder > TRACKBREAKEND){
         BASESPEED = 100;
-        W4 = 2;
-        W3 = 1.5;
-        W2 = 1.25;
-        W1 = 1;
-        Kp = Kp70;
-        Kd = Kd70;
+        Kp = Kp100;
+        Kd = Kd100;
         changeWheelSpeeds(leftSpeed, BASESPEED, rightSpeed, BASESPEED);
         returnToBase = true;
       }
     }
     else if(passedCross){
       if (!boosted && leftEncoder > STRAIGHTSTART) {
-        BASESPEED = 150;
+        BASESPEED = 210;
         Kp = Kp200;
         Kd = Kd200;
         changeWheelSpeeds(leftSpeed, BASESPEED, rightSpeed, BASESPEED);
@@ -169,8 +164,8 @@ void loop() {
       }
       else if (!slowed && leftEncoder > TURNSTART) {
         BASESPEED = 100;
-        Kp = Kp70;
-        Kd = Kd70;
+        Kp = Kp100;
+        Kd = Kd100;
         changeWheelSpeeds(leftSpeed, BASESPEED, rightSpeed, BASESPEED);
         slowed = true;
       }
@@ -202,29 +197,28 @@ double findError() {
 
 bool atCrossPiece() {
   for (int i = 0; i < 8; i++) {
-    if (currentValues[i] < CROSSPIECETHRESHOLD && firstPreviousValues[i] < CROSSPIECETHRESHOLD)
+    if (currentValues[i] < CROSSPIECETHRESHOLD) //&& firstPreviousValues[i] < CROSSPIECETHRESHOLD)
       return false;
   }
   return true;
 }
 
 void turnAround(){
-   changeWheelSpeeds(leftSpeed, 0, rightSpeed, 0);
       resetEncoderCount_left();
       resetEncoderCount_right();
 
       digitalWrite(left_dir_pin, HIGH);
-      changeWheelSpeeds(0, TURNINGSPEED, 0, TURNINGSPEED);
+      changeWheelSpeeds(leftSpeed, TURNINGSPEED, rightSpeed, TURNINGSPEED);
       bool turning = true;       
       while (turning) {
-        if (getEncoderCount_left() > 30) {  //for speed 50 -> 350,speed 150 -> 220
+        if (getEncoderCount_left() > 205) {  //for speed 50 -> 350,speed 150 -> 220
           turning = false;
         }
       }
-      changeWheelSpeeds(TURNINGSPEED, 0, TURNINGSPEED, 0);
+      //changeWheelSpeeds(TURNINGSPEED, 0, TURNINGSPEED, 0);
       digitalWrite(left_dir_pin, LOW);
       resetEncoderCount_left();
-      changeWheelSpeeds(0, BASESPEED, 0, BASESPEED);
+      changeWheelSpeeds(TURNINGSPEED, BASESPEED, TURNINGSPEED, BASESPEED);
 }
 
 void changeWheelSpeeds(int initialLeftSpd, int finalLeftSpd, int initialRightSpd, int finalRightSpd) {
