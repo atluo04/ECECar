@@ -133,7 +133,7 @@ void loop() {
     //for speeding up car
     if (!passedCross) {
       if (!boosted && leftEncoder > STRAIGHTSTART) {
-        BASESPEED = 170;
+        BASESPEED = 150;
         Kp = Kp200;
         Kd = Kd200;
         changeWheelSpeeds(leftSpeed, BASESPEED, rightSpeed, BASESPEED);
@@ -156,7 +156,7 @@ void loop() {
     }
     else if(passedCross){
       if (!boosted && leftEncoder > STRAIGHTSTART) {
-        BASESPEED = 170;
+        BASESPEED = 150;
         Kp = Kp200;
         Kd = Kd200;
         changeWheelSpeeds(leftSpeed, BASESPEED, rightSpeed, BASESPEED);
@@ -211,7 +211,7 @@ void turnAround(){
       changeWheelSpeeds(0, TURNINGSPEED, 0, TURNINGSPEED);
       bool turning = true;       
       while (turning) {
-        if (getEncoderCount_left() > 160 && getEncoderCount_right() > 160) {  //for speed 50 -> 350,speed 150 -> 220
+        if (getEncoderCount_left() > 170 && getEncoderCount_right() > 170) {  //for speed 50 -> 350,speed 150 -> 220
           turning = false;
         }
       }
