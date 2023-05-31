@@ -12,21 +12,20 @@ const int right_pwm_pin = 39;
 //ERROR VALUES
 uint16_t currentValues[8];
 uint16_t firstPreviousValues[8];
-uint16_t secondPreviousValues[8];
-double error = 0;
-double previousError = 0;
+float error = 0;
+float previousError = 0;
 
 //WEIGHTS
-double W4 = 2;
-double W3 = 1.5;
-double W2 = 1.25;
-double W1 = 1;
-int minimum[8] = {740, 692, 716,575,528,528,366,482};
+float W4 = -2;
+float W3 = -1.5;
+float W2 = -1.25;
+float W1 = -1;
+int minimum[8] = {574, 644, 692, 527, 504, 620, 527, 644};
 int maximum[8] = {2500,2500,2500,2500,2500,2500,2500,2500};
 
 //PID CONSTANTS
-float Kp = 0.068;
-float Kd = 0.4;
+float Kp = 0.065;
+float Kd = 0.36;
 
 const float Kp40 = 0.01;
 const float Kd40 = 0.04;
@@ -42,7 +41,7 @@ const float Kd200 = 0.08;
 int BASESPEED = 100;
 int leftSpeed = BASESPEED;
 int rightSpeed = BASESPEED;
-const int TURNINGSPEED = 150;
+const int TURNINGSPEED = 200;
 
 //TRACK IDENTIFIERS
 const int CROSSPIECETHRESHOLD = 1600;
@@ -64,7 +63,6 @@ bool passedCross = false;
 
 void setup() {
   ECE3_Init();
-  ECE3_read_IR(secondPreviousValues);
   ECE3_read_IR(firstPreviousValues);
   ECE3_read_IR(currentValues);
 
@@ -82,31 +80,17 @@ void setup() {
   digitalWrite(right_nslp_pin, HIGH);
 
   Serial.begin(9600);
+  error = findError();
+  previousError = error;
   delay(2000);
-   changeWheelSpeeds(0, BASESPEED, 0, BASESPEED);
+  changeWheelSpeeds(0, BASESPEED, 0, BASESPEED);
 }
 
 void loop() {
   ECE3_read_IR(currentValues);
   if (atCrossPiece()) {
     if (!passedCross) {
-      changeWheelSpeeds(leftSpeed, 0, rightSpeed, 0);
-      resetEncoderCount_left();
-      resetEncoderCount_right();
-
-      digitalWrite(left_dir_pin, HIGH);
-      changeWheelSpeeds(0, TURNINGSPEED, 0, TURNINGSPEED);
-      bool turning = true;       
-      while (turning) {
-        if (getEncoderCount_left() > 220) {  //for speed 50 -> 350,speed 150 -> 220
-          turning = false;
-        }
-      }
-      changeWheelSpeeds(TURNINGSPEED, 0, TURNINGSPEED, 0);
-      digitalWrite(left_dir_pin, LOW);
-      BASESPEED = 70;
-      resetEncoderCount_left();
-      changeWheelSpeeds(0, BASESPEED, 0, BASESPEED);
+      turnAround();
       passedCross = true;
       boosted = false;
       slowed = false;
@@ -121,16 +105,27 @@ void loop() {
     int leftEncoder = getEncoderCount_left();
 
     error = findError();
-    double rateError = error - previousError;
-    leftSpeed = BASESPEED + error * Kp + rateError * Kd;
-    rightSpeed = BASESPEED - error * Kp - rateError * Kd;
+    float rateError = error - previousError;
+    float output = Kp * error + Kd * rateError;
+
+    leftSpeed = BASESPEED - output;
+    rightSpeed = BASESPEED + output;
+
+    if(leftSpeed > 255){
+      leftSpeed = 254;
+    }
+    if(leftSpeed < 0){
+      leftSpeed = 0;
+    }
+    if(rightSpeed > 255){
+      rightSpeed = 254;
+    }
+    if(rightSpeed < 0){
+      rightSpeed = 0;
+    }
+    
     analogWrite(left_pwm_pin, leftSpeed);
     analogWrite(right_pwm_pin, rightSpeed);
-
-    if(slowed){
-      Serial.print(error);
-      Serial.println();
-    }
 
     //for speeding up car
     if (!passedCross) {
@@ -153,7 +148,7 @@ void loop() {
         slowed = true;
       }
       else if(slowed && !returnToBase && leftEncoder > TRACKBREAKEND){
-        BASESPEED = 80;
+        BASESPEED = 100;
         W4 = 2;
         W3 = 1.5;
         W2 = 1.25;
@@ -163,8 +158,6 @@ void loop() {
         changeWheelSpeeds(leftSpeed, BASESPEED, rightSpeed, BASESPEED);
         returnToBase = true;
       }
-      leftSpeed = BASESPEED;
-      rightSpeed = BASESPEED;
     }
     else if(passedCross){
       if (!boosted && leftEncoder > STRAIGHTSTART) {
@@ -172,23 +165,18 @@ void loop() {
         Kp = Kp200;
         Kd = Kd200;
         changeWheelSpeeds(leftSpeed, BASESPEED, rightSpeed, BASESPEED);
-        leftSpeed = BASESPEED;
-        rightSpeed = BASESPEED;
         boosted = true;
       }
       else if (!slowed && leftEncoder > TURNSTART) {
-        BASESPEED = 70;
+        BASESPEED = 100;
         Kp = Kp70;
         Kd = Kd70;
         changeWheelSpeeds(leftSpeed, BASESPEED, rightSpeed, BASESPEED);
-        leftSpeed = BASESPEED;
-        rightSpeed = BASESPEED;
         slowed = true;
       }
     }
 
     for (int i = 0; i < 8; i++) {
-      secondPreviousValues[i] = firstPreviousValues[i];
       firstPreviousValues[i] = currentValues[i];
     }
     previousError = error;
@@ -218,6 +206,25 @@ bool atCrossPiece() {
       return false;
   }
   return true;
+}
+
+void turnAround(){
+   changeWheelSpeeds(leftSpeed, 0, rightSpeed, 0);
+      resetEncoderCount_left();
+      resetEncoderCount_right();
+
+      digitalWrite(left_dir_pin, HIGH);
+      changeWheelSpeeds(0, TURNINGSPEED, 0, TURNINGSPEED);
+      bool turning = true;       
+      while (turning) {
+        if (getEncoderCount_left() > 30) {  //for speed 50 -> 350,speed 150 -> 220
+          turning = false;
+        }
+      }
+      changeWheelSpeeds(TURNINGSPEED, 0, TURNINGSPEED, 0);
+      digitalWrite(left_dir_pin, LOW);
+      resetEncoderCount_left();
+      changeWheelSpeeds(0, BASESPEED, 0, BASESPEED);
 }
 
 void changeWheelSpeeds(int initialLeftSpd, int finalLeftSpd, int initialRightSpd, int finalRightSpd) {
