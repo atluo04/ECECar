@@ -45,14 +45,15 @@ const int TURNINGSPEED = 180;
 
 //TRACK IDENTIFIERS
 const int CROSSPIECETHRESHOLD = 1600;
-const int TRACKBREAK = 3400;
-const int TRACKBREAKEND = 3800;
+const int TRACKBREAK = 3200; //3400;
+const int TRACKBREAKEND = 3650; //3800;
 int STRAIGHTSTART = 1850;
-const int TURNSTART = 2650;
+const int TURNSTART = 2400; //2650;
 bool boosted = false;
 bool slowed = false;
 bool returnToBase = false;
 bool passedCross = false;
+bool passedStart = false;
 
 /*
   void calibrate() {
@@ -132,7 +133,13 @@ void loop() {
 
     //for speeding up car
     if (!passedCross) {
-      if (!boosted && leftEncoder > STRAIGHTSTART) {
+      if(!passedStart && leftEncoder > 400){
+        BASESPEED = 70;
+        changeWheelSpeeds(leftSpeed, BASESPEED, rightSpeed, BASESPEED);
+        passedStart = true;
+      }
+
+      else if (!boosted && leftEncoder > STRAIGHTSTART) {
         BASESPEED = 155;
         Kp = Kp200;
         Kd = Kd200;
