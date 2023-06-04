@@ -33,22 +33,22 @@ const float Kd40 = 0.35;
 const float Kp100 = 0.065;
 const float Kd100 = 0.36;
 
-const float Kp200 = 0.03;   //need to find values
-const float Kd200 = 0.373;   
+const float Kp200 = 0.027;  //0.03 
+const float Kd200 = 0.373;   //0.373
 
 
 //SPEEDs
-int BASESPEED = 100;
+int BASESPEED = 80;
 int leftSpeed = BASESPEED;
 int rightSpeed = BASESPEED;
 const int TURNINGSPEED = 180;
 
 //TRACK IDENTIFIERS
 const int CROSSPIECETHRESHOLD = 1600;
-const int TRACKBREAK = 3200; //3400;
-const int TRACKBREAKEND = 3650; //3800;
-int STRAIGHTSTART = 1850;
-const int TURNSTART = 2400; //2650;
+const int TRACKBREAK = 3150; //3400;
+const int TRACKBREAKEND = 3675; //3800;
+int STRAIGHTSTART = 1800;
+const int TURNSTART = 2375; //2650;
 bool boosted = false;
 bool slowed = false;
 bool returnToBase = false;
@@ -94,7 +94,7 @@ void loop() {
       turnAround();
       Kp = Kp200;
       Kd = Kd200;
-      BASESPEED = 155;
+      BASESPEED = 160;
       passedCross = true;
       boosted = false;
       slowed = false;
@@ -133,14 +133,14 @@ void loop() {
 
     //for speeding up car
     if (!passedCross) {
-      if(!passedStart && leftEncoder > 400){
-        BASESPEED = 70;
+      /*if(!passedStart && leftEncoder > 400){
+        BASESPEED = 60;
         changeWheelSpeeds(leftSpeed, BASESPEED, rightSpeed, BASESPEED);
         passedStart = true;
       }
 
-      else if (!boosted && leftEncoder > STRAIGHTSTART) {
-        BASESPEED = 155;
+      else*/ if (!boosted && leftEncoder > STRAIGHTSTART) {
+        BASESPEED = 175;
         Kp = Kp200;
         Kd = Kd200;
         changeWheelSpeeds(leftSpeed, BASESPEED, rightSpeed, BASESPEED);
