@@ -20,7 +20,7 @@ float W4 = -2;
 float W3 = -1.5;
 float W2 = -1.25;
 float W1 = -1;
-int minimum[8] = {807, 713, 689, 549, 619, 689, 619, 689};
+int minimum[8] = {856, 689, 642, 527, 619, 689, 596, 689};
 int maximum[8] = {2500,2500,2500,2500,2500,2500,2500,2500};
 
 //PID CONSTANTS
@@ -38,17 +38,17 @@ const float Kd200 = 0.373;   //0.373
 
 
 //SPEEDs
-int BASESPEED = 80;
+int BASESPEED = 100;
 int leftSpeed = BASESPEED;
 int rightSpeed = BASESPEED;
 const int TURNINGSPEED = 180;
 
 //TRACK IDENTIFIERS
 const int CROSSPIECETHRESHOLD = 1600;
-const int TRACKBREAK = 3150; //3400;
-const int TRACKBREAKEND = 3675; //3800;
+const int TRACKBREAK = 3350; //3400;
+const int TRACKBREAKEND = 3800; //3800;
 int STRAIGHTSTART = 1800;
-const int TURNSTART = 2375; //2650;
+const int TURNSTART = 2600; //2650;
 bool boosted = false;
 bool slowed = false;
 bool returnToBase = false;
